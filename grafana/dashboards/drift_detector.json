@@ -1,0 +1,197 @@
+{
+  "title": "Terraform Drift Detector",
+  "uid": "drift-detector",
+  "version": 1,
+  "schemaVersion": 39,
+  "tags": ["terraform", "drift", "mlops"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "Drift Detection Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(drift_detections_total)",
+          "legendFormat": "Total"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Repeat Incidents",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(drift_detections_total{drift_type=~\"security|config|deletion\"})",
+          "legendFormat": "Repeat"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Avg Confidence",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "drift_confidence_sum / drift_confidence_count",
+          "legendFormat": "Avg Confidence"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "green", "value": 0.9 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Active Drift Types",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "count(drift_detections_total > 0)",
+          "legendFormat": "Types"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      }
+    },
+    {
+      "title": "Drift Detections by Type",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum by(drift_type) (drift_detections_total)",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "security" },
+            "properties": [{ "id": "color", "value": { "fixed": "red" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "config" },
+            "properties": [{ "id": "color", "value": { "fixed": "orange" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "deletion" },
+            "properties": [{ "id": "color", "value": { "fixed": "yellow" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "no_drift" },
+            "properties": [{ "id": "color", "value": { "fixed": "green" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tag" },
+            "properties": [{ "id": "color", "value": { "fixed": "blue" } }]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "auto",
+        "showValue": "auto",
+        "legend": { "showLegend": true }
+      }
+    },
+    {
+      "title": "Confidence Distribution",
+      "type": "histogram",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 4 },
+      "targets": [
+        {
+          "expr": "drift_confidence_bucket",
+          "legendFormat": "__auto"
+        }
+      ],
+      "options": {
+        "bucketOffset": 0,
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false }
+      }
+    },
+    {
+      "title": "Drift Rate Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "rate(drift_detections_total[5m])",
+          "legendFormat": "{{drift_type}}"
+        }
+      ],
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "cps" }
+      }
+    }
+  ]
+}

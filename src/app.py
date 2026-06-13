@@ -4,13 +4,15 @@
 import json
 import os
 import sys
+import time
 from contextlib import asynccontextmanager
 
 import numpy as np
 import joblib
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 sys.path.insert(0, os.path.dirname(__file__))
 from features import extract_features, features_to_list, FEATURE_NAMES
@@ -41,6 +43,23 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Terraform Drift Detector", lifespan=lifespan)
+
+# ── Prometheus Metrics ──────────────────────────────────────
+drift_counter = Counter(
+    "drift_detections_total",
+    "Total drift detections",
+    ["drift_type", "severity"],
+)
+drift_confidence = Histogram(
+    "drift_confidence",
+    "Confidence scores for drift predictions",
+    buckets=[0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.99, 1.0],
+)
+
+
+@app.get("/metrics")
+def metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 DRIFT_SEVERITY = {
@@ -82,6 +101,9 @@ def detect_plan(plan: dict):
         features_dict=features,
         plan_dict=plan,
     )
+
+    drift_counter.labels(drift_type=drift_type, severity=severity).inc()
+    drift_confidence.observe(confidence)
 
     return {
         "event_id": event_id,
