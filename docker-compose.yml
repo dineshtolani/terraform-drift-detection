@@ -1,10 +1,32 @@
 services:
+  drift-detector:
+    build: .
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+        reservations:
+          cpus: "0.5"
+          memory: "256M"
+
   floci:
     image: hectorvent/floci:latest
     ports:
       - "4566:4566"
     volumes:
       - floci-data:/app/data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
 
   prometheus:
     image: prom/prometheus:latest
@@ -14,6 +36,11 @@ services:
       - ./prometheus:/etc/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
 
   grafana:
     image: grafana/grafana:latest
@@ -27,6 +54,11 @@ services:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
       - grafana-data:/var/lib/grafana
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
 
 volumes:
   floci-data:

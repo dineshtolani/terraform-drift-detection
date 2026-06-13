@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: |
+          python -m pytest tests/ -v
+
+      - name: Generate training data
+        run: |
+          PYTHONPATH=src python scripts/generate_training_data.py --samples 10
+
+      - name: Train model
+        run: |
+          PYTHONPATH=src python src/train.py
+
+      - name: Start app and smoke test
+        run: |
+          uvicorn src.app:app --host 0.0.0.0 --port 8001 &
+          sleep 3
+          curl -s http://localhost:8001/ | grep -q "Drift Detector"
+          curl -s http://localhost:8001/metrics | grep -q "drift_detections"
+          echo "All smoke tests passed"
