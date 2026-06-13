@@ -58,12 +58,15 @@ def save_drift_event(drift_type, confidence, severity, resource, changes_count, 
     conn = get_connection()
     cur = conn.cursor()
 
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     cur.execute("""
-        INSERT INTO drift_events (drift_type, confidence, severity, resource, changes_count, features_json, plan_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO drift_events (drift_type, confidence, severity, resource, changes_count, features_json, plan_json, detected_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         drift_type, confidence, severity, resource, changes_count,
-        json.dumps(features_dict), json.dumps(plan_dict, default=str)
+        json.dumps(features_dict), json.dumps(plan_dict, default=str),
+        now,
     ))
 
     event_id = cur.lastrowid
@@ -76,20 +79,22 @@ def save_drift_event(drift_type, confidence, severity, resource, changes_count, 
 
     count, last_detected = cur.fetchone()
 
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     if count > 0:
         message = f"Repeat incident! Resource '{resource}' drifted as '{drift_type}' - {count} previous time(s). Last: {last_detected}"
         is_repeat = 1
         cur.execute("""
-            INSERT INTO drift_alerts (event_id, message, is_repeat, repeat_count)
-            VALUES (?, ?, ?, ?)
-        """, (event_id, message, is_repeat, count))
+            INSERT INTO drift_alerts (event_id, message, is_repeat, repeat_count, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (event_id, message, is_repeat, count, now))
         print(f"[DB] ALERT: {message}")
     else:
         message = f"New drift detected: {drift_type} on {resource}"
         cur.execute("""
-            INSERT INTO drift_alerts (event_id, message, is_repeat, repeat_count)
-            VALUES (?, ?, ?, ?)
-        """, (event_id, message, 0, 0))
+            INSERT INTO drift_alerts (event_id, message, is_repeat, repeat_count, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (event_id, message, 0, 0, now))
         print(f"[DB] {message}")
 
     conn.commit()
@@ -100,10 +105,11 @@ def save_drift_event(drift_type, confidence, severity, resource, changes_count, 
 def save_training_sample(label, features_dict):
     conn = get_connection()
     cur = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cur.execute("""
-        INSERT INTO training_data (label, features_json)
-        VALUES (?, ?)
-    """, (label, json.dumps(features_dict)))
+        INSERT INTO training_data (label, features_json, created_at)
+        VALUES (?, ?, ?)
+    """, (label, json.dumps(features_dict), now))
     conn.commit()
     conn.close()
 
